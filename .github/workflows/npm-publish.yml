@@ -1,0 +1,63 @@
+name: Publish package to NPM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build
+        run: yarn build
+
+      - name: Publish if the version is new
+        id: publish
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+
+          if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null)" ]; then
+            echo "$NAME@$VERSION is already published"
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          yarn npm publish --access public
+          echo "published=true" >> "$GITHUB_OUTPUT"
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  notify:
+    needs: publish
+    if: needs.publish.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get package info
+        id: package
+        uses: codex-team/action-nodejs-package-info@v1
+
+      - name: Send a message
+        uses: codex-team/action-codexbot-notify@v1
+        with:
+          webhook: ${{ secrets.CODEX_BOT_WEBHOOK_HAWK }}
+          message: '📦 [${{ steps.package.outputs.name }}](${{ steps.package.outputs.npmjs-link }}) ${{ steps.package.outputs.version }} was published'
+          parse_mode: 'markdown'
+          disable_web_page_preview: true

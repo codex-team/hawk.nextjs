@@ -1,0 +1,11 @@
+import { ErrorButton } from './error-button';
+
+export default function Home() {
+  return (
+    <main>
+      <h1>Hawk Next.js example</h1>
+      <p>Release: <code>{process.env.HAWK_RELEASE}</code></p>
+      <ErrorButton />
+    </main>
+  );
+}
