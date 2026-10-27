@@ -53,17 +53,42 @@ On `next build` the plugin:
 
 ### Release id
 
-The release id is resolved once per build, in this order:
+Release id links errors to the source maps and commits sent from the build. You don't need to set it: the plugin picks it once per build, in this order:
 
 1. `release` option
 2. `HAWK_RELEASE` environment variable
-3. commit SHA from the CI environment: `GITHUB_SHA`, `CI_COMMIT_SHA`, `VERCEL_GIT_COMMIT_SHA` and others
-4. `git rev-parse HEAD`
-5. build start time
+3. commit SHA from the CI environment: GitHub Actions (`GITHUB_SHA`), GitLab CI (`CI_COMMIT_SHA`), Vercel (`VERCEL_GIT_COMMIT_SHA`), Netlify, Cloudflare Pages, CircleCI and [others](./src/release.ts)
+4. current commit: `git rev-parse HEAD`
+5. build start time, e.g. `2026-10-27T18:30:00.000Z`
+
+So in most setups the release is the commit SHA: it is unique for every deployed version and the same in client and server code.
+
+The plugin sends source maps and commits with this release and inlines it into your code as `process.env.HAWK_RELEASE`. You don't define this variable yourself, just pass it to the catcher, see [below](#connect-release-to-javascript-catcher).
+
+Set your own release when you prefer another format, for example the version from `package.json`, which package managers expose while running `yarn build` or `npm run build`:
+
+```ts
+export default withHawkConfig(nextConfig, {
+  release: process.env.npm_package_version,
+});
+```
+
+Keep in mind that a version is unique only if you bump it for every deploy, otherwise errors of different builds get into the same release.
+
+The release can also be set from the outside with the `HAWK_RELEASE` environment variable, e.g. `HAWK_RELEASE=$(git describe --tags) yarn build`. This is useful for Docker builds, which usually have neither `.git` nor CI variables and fall back to the build time:
+
+```dockerfile
+ARG HAWK_RELEASE
+RUN yarn build
+```
+
+```shell
+docker build --build-arg HAWK_RELEASE=$(git rev-parse HEAD) .
+```
 
 ### Connect release to JavaScript catcher
 
-Pass `process.env.HAWK_RELEASE` to the [JavaScript Catcher](https://github.com/codex-team/hawk.javascript) on initialization, so Hawk can match errors with the source maps of the release.
+Pass `process.env.HAWK_RELEASE` to the [JavaScript Catcher](https://github.com/codex-team/hawk.javascript) on initialization, so Hawk can match errors with the source maps of the release. The value is inlined at build time, so it works in the browser without the `NEXT_PUBLIC_` prefix.
 
 ```ts
 // instrumentation-client.ts
