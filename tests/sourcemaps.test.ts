@@ -67,27 +67,82 @@ describe('findClientSourceMaps', () => {
       'static/immutable/chunks/l7m6.js.map': '{}',
     });
 
-    expect(await findClientSourceMaps(distDir)).toEqual([
+    const maps = await findClientSourceMaps(distDir);
+
+    expect(maps.map(({ path: mapPath, chunkUrl }) => ({
+      path: mapPath,
+      chunkUrl,
+    }))).toEqual([
       {
         path: path.join(distDir, 'static/chunks/9z8y7x.js.map'),
         chunkUrl: '/_next/static/chunks/0a1b2c.js',
-        name: '0a1b2c.js.map',
       },
       {
         path: path.join(distDir, 'static/chunks/6g7h8i.js.map'),
         chunkUrl: '/_next/static/chunks/3d4e5f.js',
-        name: '3d4e5f.js.map',
       },
       {
         path: path.join(distDir, 'static/chunks/app/page-1f2e.js.map'),
         chunkUrl: '/_next/static/chunks/app/page-1f2e.js',
-        name: 'page-1f2e.js.map',
       },
       {
         path: path.join(distDir, 'static/immutable/chunks/l7m6.js.map'),
         chunkUrl: '/_next/static/immutable/chunks/j9k8.js',
-        name: 'j9k8.js.map',
       },
+    ]);
+    expect(maps.map(map => map.name)).toEqual([
+      expect.stringMatching(/^0a1b2c\.[\da-f]{8}\.js\.map$/),
+      expect.stringMatching(/^3d4e5f\.[\da-f]{8}\.js\.map$/),
+      expect.stringMatching(/^page-1f2e\.[\da-f]{8}\.js\.map$/),
+      expect.stringMatching(/^j9k8\.[\da-f]{8}\.js\.map$/),
+    ]);
+  });
+
+  it('encodes chunk URLs of dynamic routes like Next.js does', async () => {
+    const distDir = await createTempDir({
+      'static/chunks/app/blog/[slug]/page-1f2e.js': 'a();\n//# sourceMappingURL=page-1f2e.js.map',
+      'static/chunks/app/blog/[slug]/page-1f2e.js.map': '{}',
+      'static/chunks/app/@modal/(group)/page-3d4e.js': 'b();\n//# sourceMappingURL=page-3d4e.js.map',
+      'static/chunks/app/@modal/(group)/page-3d4e.js.map': '{}',
+    });
+
+    expect(await findClientSourceMaps(distDir)).toEqual([
+      expect.objectContaining({
+        path: path.join(distDir, 'static/chunks/app/@modal/(group)/page-3d4e.js.map'),
+        chunkUrl: '/_next/static/chunks/app/%40modal/(group)/page-3d4e.js',
+      }),
+      expect.objectContaining({
+        path: path.join(distDir, 'static/chunks/app/blog/[slug]/page-1f2e.js.map'),
+        chunkUrl: '/_next/static/chunks/app/blog/%5Bslug%5D/page-1f2e.js',
+      }),
+    ]);
+  });
+
+  it('gives unique names to maps of chunks with the same name in different directories', async () => {
+    const distDir = await createTempDir({
+      'static/chunks/app/first/page-1f2e.js': 'a();\n//# sourceMappingURL=page-1f2e.js.map',
+      'static/chunks/app/first/page-1f2e.js.map': '{}',
+      'static/chunks/app/second/page-1f2e.js': 'a();\n//# sourceMappingURL=page-1f2e.js.map',
+      'static/chunks/app/second/page-1f2e.js.map': '{}',
+    });
+
+    const maps = await findClientSourceMaps(distDir);
+    const names = maps.map(map => map.name);
+
+    expect(maps).toHaveLength(2);
+    expect(new Set(names).size).toBe(2);
+    expect(names.every(name => /^page-1f2e\.[\da-f]{8}\.js\.map$/.test(name))).toBe(true);
+    expect((await findClientSourceMaps(distDir)).map(map => map.name)).toEqual(names);
+  });
+
+  it('skips directories named like chunks', async () => {
+    const distDir = await createTempDir({
+      'static/chunks/app/feed.js/page-1f2e.js': 'a();\n//# sourceMappingURL=page-1f2e.js.map',
+      'static/chunks/app/feed.js/page-1f2e.js.map': '{}',
+    });
+
+    expect(await findClientSourceMaps(distDir)).toEqual([
+      expect.objectContaining({ chunkUrl: '/_next/static/chunks/app/feed.js/page-1f2e.js' }),
     ]);
   });
 

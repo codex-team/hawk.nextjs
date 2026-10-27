@@ -1,7 +1,7 @@
 import { readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { JS_SOURCE_MAPPING_URL, STATIC_DIR } from './sourcemaps';
-import { listEntries } from './utils/fs';
+import { listFiles } from './utils/fs';
 
 /**
  * Trailing `/*# sourceMappingURL=... *\/` comment of a CSS file
@@ -15,7 +15,7 @@ const CSS_SOURCE_MAPPING_URL = /(?:^|\n)\/\*[#@] sourceMappingURL=[^\s*]+\s*\*\/
  */
 export async function deleteClientSourceMaps(distDir: string): Promise<number> {
   const staticDir = path.join(distDir, STATIC_DIR);
-  const maps = (await listEntries(staticDir)).filter(entry => entry.endsWith('.map'));
+  const maps = (await listFiles(staticDir)).filter(entry => entry.endsWith('.map'));
 
   await Promise.all(maps.map(entry => unlink(path.join(staticDir, entry))));
 
@@ -30,7 +30,7 @@ export async function deleteClientSourceMaps(distDir: string): Promise<number> {
  */
 export async function stripSourceMappingUrlComments(distDir: string): Promise<number> {
   const staticDir = path.join(distDir, STATIC_DIR);
-  const assets = (await listEntries(staticDir)).filter(entry => /\.([cm]?js|css)$/.test(entry));
+  const assets = (await listFiles(staticDir)).filter(entry => /\.([cm]?js|css)$/.test(entry));
 
   const updated = await Promise.all(assets.map(async (entry) => {
     const filePath = path.join(staticDir, entry);

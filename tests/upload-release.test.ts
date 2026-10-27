@@ -4,7 +4,7 @@ import process from 'node:process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UploadReleaseOptions } from '../src/upload-release';
 import { uploadRelease } from '../src/upload-release';
-import { listEntries } from '../src/utils/fs';
+import { listFiles } from '../src/utils/fs';
 import { createTempDir, createToken, silenceLogs, turbopackMap } from './helpers';
 
 /**
@@ -44,7 +44,7 @@ async function collectorMock(_url: string, init: RequestInit): Promise<Response>
   const file = body.get('file') as File | null;
   const commits = body.get('commits') as string | null;
 
-  if (file?.name === 'broken.js.map') {
+  if (file?.name.startsWith('broken.') === true) {
     return new Response('{"code":400,"error":true,"message":"Broken map"}', { status: 400 });
   }
 
@@ -99,7 +99,10 @@ describe('uploadRelease', () => {
       distDir,
     }, baseOptions);
 
-    expect(requests.map(request => request.fileName)).toEqual(expect.arrayContaining(['0a1b2c.js.map', '3d4e5f.js.map']));
+    expect(requests.map(request => request.fileName)).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^0a1b2c\.[\da-f]{8}\.js\.map$/),
+      expect.stringMatching(/^3d4e5f\.[\da-f]{8}\.js\.map$/),
+    ]));
     expect(requests).toHaveLength(2);
     expect(requests.every(request => request.release === 'release-1')).toBe(true);
     expect(requests.map(request => request.file?.file)).toEqual(expect.arrayContaining([
@@ -107,10 +110,10 @@ describe('uploadRelease', () => {
       '/_next/static/chunks/3d4e5f.js',
     ]));
 
-    expect(await listEntries(path.join(distDir, 'static/chunks'))).toEqual(expect.arrayContaining(['0a1b2c.js', '3d4e5f.js']));
-    expect(await listEntries(path.join(distDir, 'static/chunks'))).toHaveLength(2);
-    expect(await listEntries(path.join(distDir, 'static/css'))).toEqual(['styles.css']);
-    expect(await listEntries(path.join(distDir, 'server/chunks/ssr'))).toEqual(['page.js.map']);
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toEqual(expect.arrayContaining(['0a1b2c.js', '3d4e5f.js']));
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toHaveLength(2);
+    expect(await listFiles(path.join(distDir, 'static/css'))).toEqual(['styles.css']);
+    expect(await listFiles(path.join(distDir, 'server/chunks/ssr'))).toEqual(['page.js.map']);
     expect(await readFile(path.join(distDir, 'static/chunks/0a1b2c.js'), 'utf8')).toBe('a();');
     expect(await readFile(path.join(distDir, 'static/css/styles.css'), 'utf8')).toBe('body{}');
   });
@@ -128,8 +131,8 @@ describe('uploadRelease', () => {
     }, baseOptions);
 
     expect(requests).toHaveLength(2);
-    expect(logSpy.mock.calls.flat().join('\n')).toContain('broken.js.map – sending failed: Broken map');
-    expect((await listEntries(path.join(distDir, 'static'))).some(entry => entry.endsWith('.map'))).toBe(false);
+    expect(logSpy.mock.calls.flat().join('\n')).toContain('/_next/static/chunks/broken.js.map – sending failed: Broken map');
+    expect((await listFiles(path.join(distDir, 'static'))).some(entry => entry.endsWith('.map'))).toBe(false);
   });
 
   it('keeps maps and comments when removing is disabled', async () => {
@@ -144,7 +147,7 @@ describe('uploadRelease', () => {
     });
 
     expect(requests).toHaveLength(2);
-    expect(await listEntries(path.join(distDir, 'static/chunks'))).toHaveLength(4);
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toHaveLength(4);
   });
 
   it('keeps sourceMappingURL comments when stripping is disabled', async () => {
@@ -159,7 +162,7 @@ describe('uploadRelease', () => {
     });
 
     expect(await readFile(path.join(distDir, 'static/chunks/0a1b2c.js'), 'utf8')).toContain('sourceMappingURL');
-    expect(await listEntries(path.join(distDir, 'static/chunks'))).toHaveLength(2);
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toHaveLength(2);
   });
 
   it('sends commits before source maps', async () => {
@@ -196,7 +199,7 @@ describe('uploadRelease', () => {
     });
 
     expect(requests).toHaveLength(0);
-    expect(await listEntries(path.join(distDir, 'static/chunks'))).toHaveLength(4);
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toHaveLength(4);
   });
 
   it('does nothing with an invalid token and no endpoint overwrite', async () => {

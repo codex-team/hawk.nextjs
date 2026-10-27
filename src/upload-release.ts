@@ -151,7 +151,7 @@ async function uploadSourceMaps(collector: Collector, distDir: string): Promise<
       await sendSourceMap(collector, map.name, content);
       sentCount += 1;
     } catch (error) {
-      log(`(⌐■_■) ${map.name} – sending failed: ${getErrorMessage(error)}`, consoleColors.fgRed);
+      log(`(⌐■_■) ${map.chunkUrl}.map – sending failed: ${getErrorMessage(error)}`, consoleColors.fgRed);
     }
   });
 

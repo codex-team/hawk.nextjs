@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { listEntries } from './utils/fs';
+import { listFiles } from './utils/fs';
 
 /**
  * Directory inside `distDir` with assets served to the browser
@@ -11,6 +12,11 @@ export const STATIC_DIR = 'static';
  * URL path the `distDir` assets are served from
  */
 const PUBLIC_PATH_PREFIX = '/_next/';
+
+/**
+ * Number of hex characters of the chunk path hash added to the source map name
+ */
+const PATH_HASH_LENGTH = 8;
 
 /**
  * Trailing `//# sourceMappingURL=...` comment of a JavaScript file
@@ -35,12 +41,13 @@ export interface ClientSourceMap {
   path: string;
 
   /**
-   * Public URL path of the chunk the map belongs to, e.g. `/_next/static/chunks/0a1b2c.js`
+   * Public URL path of the chunk the map belongs to, encoded like Next.js does,
+   * e.g. `/_next/static/chunks/app/blog/%5Bslug%5D/page-1f2e.js`
    */
   chunkUrl: string;
 
   /**
-   * File name to send the map with: chunk name with `.map`, e.g. `0a1b2c.js.map`
+   * Unique file name to send the map with, e.g. `page-1f2e.0a1b2c3d.js.map`
    */
   name: string;
 }
@@ -127,6 +134,34 @@ function getSourceMapPath(chunk: string, content: string): string | undefined {
 }
 
 /**
+ * Encodes every segment of the path like Next.js and Turbopack do in chunk URLs,
+ * so `app/blog/[slug]/page.js` becomes `app/blog/%5Bslug%5D/page.js`
+ * @param filePath - path with forward slashes
+ */
+function encodeUrlPath(filePath: string): string {
+  return filePath.split('/').map(segment => encodeURIComponent(segment))
+    .join('/');
+}
+
+/**
+ * Returns a unique file name to send the chunk's map with.
+ *
+ * Hawk skips a map if a map with the same name is already saved for the release, and the collector may drop
+ * directories from file names. Chunks of different routes can share a name (webpack builds `app/first/page-1f2e.js`
+ * and `app/second/page-1f2e.js` for identical pages), so a short hash of the chunk path is added to the name
+ * @param chunk - chunk path relative to the static directory, e.g. `chunks/app/first/page-1f2e.js`
+ * @returns name like `page-1f2e.0a1b2c3d.js.map`
+ */
+function getSourceMapName(chunk: string): string {
+  const extension = path.posix.extname(chunk);
+  const hash = createHash('sha256').update(chunk)
+    .digest('hex')
+    .slice(0, PATH_HASH_LENGTH);
+
+  return `${path.posix.basename(chunk, extension)}.${hash}${extension}.map`;
+}
+
+/**
  * Checks that the file exists
  * @param filePath - absolute path to check
  */
@@ -149,7 +184,7 @@ async function fileExists(filePath: string): Promise<boolean> {
  */
 export async function findClientSourceMaps(distDir: string): Promise<ClientSourceMap[]> {
   const staticDir = path.join(distDir, STATIC_DIR);
-  const chunks = (await listEntries(staticDir)).filter(entry => /\.[cm]?js$/.test(entry)).sort();
+  const chunks = (await listFiles(staticDir)).filter(entry => /\.[cm]?js$/.test(entry)).sort();
 
   const maps = await Promise.all(chunks.map(async (chunk): Promise<ClientSourceMap | undefined> => {
     const mapPath = getSourceMapPath(chunk, await readFile(path.join(staticDir, chunk), 'utf8'));
@@ -160,8 +195,8 @@ export async function findClientSourceMaps(distDir: string): Promise<ClientSourc
 
     return {
       path: path.join(staticDir, mapPath),
-      chunkUrl: `${PUBLIC_PATH_PREFIX}${STATIC_DIR}/${chunk}`,
-      name: `${path.posix.basename(chunk)}.map`,
+      chunkUrl: `${PUBLIC_PATH_PREFIX}${STATIC_DIR}/${encodeUrlPath(chunk)}`,
+      name: getSourceMapName(chunk),
     };
   }));
 

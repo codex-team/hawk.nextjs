@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ErrorButton } from './error-button';
 
 export default function Home() {
@@ -6,6 +7,7 @@ export default function Home() {
       <h1>Hawk Next.js example</h1>
       <p>Release: <code>{process.env.HAWK_RELEASE}</code></p>
       <ErrorButton />
+      <p><Link href="/posts/hello">Dynamic route</Link></p>
     </main>
   );
 }

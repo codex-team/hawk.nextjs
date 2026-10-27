@@ -16,6 +16,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const exampleDir = path.join(rootDir, 'example');
 const distDir = path.join(exampleDir, '.next');
 const staticDir = path.join(distDir, 'static');
+const prerenderedDir = path.join(distDir, 'server', 'app');
 
 const useWebpack = process.argv.includes('--webpack');
 const useDebugIds = process.argv.includes('--debug-ids');
@@ -102,6 +103,19 @@ function getSources(map) {
   ];
 }
 
+/**
+ * Returns URLs of the client scripts as the browser loads them, taken from the prerendered HTML pages
+ *
+ * @returns {Promise<string[]>}
+ */
+async function getPageScriptUrls() {
+  const pages = (await listFiles(prerenderedDir)).filter(file => file.endsWith('.html'));
+  const html = await Promise.all(pages.map(file => readFile(path.join(prerenderedDir, file), 'utf8')));
+  const urls = html.flatMap(content => [...content.matchAll(/src="(\/_next\/static\/[^"?]+\.js)(?:\?[^"]*)?"/g)].map(match => match[1]));
+
+  return [...new Set(urls)];
+}
+
 await rm(distDir, {
   recursive: true,
   force: true,
@@ -131,9 +145,21 @@ check(requests.indexOf(commitsRequests[0]) === 0, 'commits are sent before sourc
 check(mapRequests.every(request => request.files.length === 1 && request.files[0].name.endsWith('.js.map')), `${mapRequests.length} source maps are sent one per request`);
 
 const maps = mapRequests.map(request => JSON.parse(request.files[0].content));
+const mapNames = mapRequests.map(request => request.files[0].name);
 const chunkFiles = new Set((await listFiles(staticDir)).map(file => `/_next/static/${file.split(path.sep).join('/')}`));
 const sources = maps.flatMap(getSources);
 const indexedMapsCount = maps.filter(map => Array.isArray(map.sections)).length;
+const scriptUrls = await getPageScriptUrls();
+
+/**
+ * Scripts of the prerendered pages that have an uploaded map, matched by the decoded path
+ */
+const mappedScripts = scriptUrls
+  .map(url => ({
+    url,
+    map: maps.find(map => decodeURIComponent(map.file) === decodeURIComponent(url)),
+  }))
+  .filter(script => script.map !== undefined);
 
 if (process.argv.includes('--verbose')) {
   for (const map of maps) {
@@ -142,10 +168,24 @@ if (process.argv.includes('--verbose')) {
   }
 
   console.log(`  chunks on disk: ${[...chunkFiles].join(', ')}`);
+  console.log(`  page scripts: ${scriptUrls.join(', ')}`);
 }
 
+check(new Set(mapNames).size === mapNames.length, 'source maps have unique names, so Hawk saves all of them');
 check(maps.every(map => /^\/_next\/static\/.+\.js$/.test(map.file)), 'every map has `file` with the public chunk path');
-check(maps.every(map => chunkFiles.has(map.file)), 'every map `file` points to an existing chunk');
+check(maps.every(map => chunkFiles.has(decodeURIComponent(map.file))), 'every map `file` points to an existing chunk');
+/**
+ * Hawk JavaScript worker picks the first map whose `file` is a substring of the stack frame URL
+ */
+check(
+  mappedScripts.length > 0 && mappedScripts.every(script => maps.find(map => script.url.includes(map.file)) === script.map),
+  `Hawk finds the right map by URL for ${mappedScripts.length} scripts of prerendered pages`
+);
+
+if (useWebpack) {
+  check(mappedScripts.some(script => script.url.includes('/%5Bslug%5D/')), 'dynamic route chunk with an encoded URL is mapped');
+}
+
 /**
  * Turbopack root is the repository root, so project sources start with `example/`
  */

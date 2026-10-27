@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deleteClientSourceMaps, stripSourceMappingUrlComments } from '../src/cleanup';
-import { listEntries } from '../src/utils/fs';
+import { listFiles } from '../src/utils/fs';
 import { createTempDir } from './helpers';
 
 describe('deleteClientSourceMaps', () => {
@@ -15,8 +15,18 @@ describe('deleteClientSourceMaps', () => {
     });
 
     expect(await deleteClientSourceMaps(distDir)).toBe(2);
-    expect(await listEntries(path.join(distDir, 'static/chunks'))).toEqual(['a.js']);
-    expect(await listEntries(path.join(distDir, 'server/chunks'))).toEqual(['c.js.map']);
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toEqual(['a.js']);
+    expect(await listFiles(path.join(distDir, 'server/chunks'))).toEqual(['c.js.map']);
+  });
+
+  it('keeps directories named like maps', async () => {
+    const distDir = await createTempDir({
+      'static/chunks/app/feed.js.map/page.js': 'code',
+      'static/chunks/app/feed.js.map/page.js.map': '{}',
+    });
+
+    expect(await deleteClientSourceMaps(distDir)).toBe(1);
+    expect(await listFiles(path.join(distDir, 'static/chunks'))).toEqual(['app/feed.js.map/page.js']);
   });
 });
 
@@ -35,5 +45,14 @@ describe('stripSourceMappingUrlComments', () => {
     expect(await read('chunks/a.js')).toBe('console.log(1);\n//# debugId=abc');
     expect(await read('chunks/b.js')).toBe('console.log("//# sourceMappingURL=inside-string.js.map");');
     expect(await read('css/c.css')).toBe('body{color:red}');
+  });
+
+  it('skips directories named like assets', async () => {
+    const distDir = await createTempDir({
+      'static/chunks/app/feed.js/page.js': 'console.log(1);\n//# sourceMappingURL=page.js.map',
+    });
+
+    expect(await stripSourceMappingUrlComments(distDir)).toBe(1);
+    expect(await readFile(path.join(distDir, 'static/chunks/app/feed.js/page.js'), 'utf8')).toBe('console.log(1);');
   });
 });
