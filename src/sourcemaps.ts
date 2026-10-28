@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { access, readFile } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
-import { listFiles } from './utils/fs';
+import { listFiles, MAX_PARALLEL_FILE_OPERATIONS, readFileTail } from './utils/fs';
+import { mapConcurrently } from './utils/pool';
 
 /**
  * Directory inside `distDir` with assets served to the browser
@@ -17,6 +18,12 @@ const PUBLIC_PATH_PREFIX = '/_next/';
  * Number of hex characters of the chunk path hash added to the source map name
  */
 const PATH_HASH_LENGTH = 8;
+
+/**
+ * Number of bytes read from the end of a chunk to find its `sourceMappingURL` comment.
+ * Bundlers put it on the last line, after an optional `//# debugId=...` line
+ */
+const CHUNK_TAIL_SIZE = 4096;
 
 /**
  * Trailing `//# sourceMappingURL=...` comment of a JavaScript file
@@ -114,7 +121,7 @@ function normalizeSources(map: RawSourceMap): void {
 /**
  * Returns path of the chunk's source map relative to the static directory
  * @param chunk - chunk path relative to the static directory, e.g. `chunks/0a1b2c.js`
- * @param content - chunk code ending with the `sourceMappingURL` comment
+ * @param content - end of the chunk code with the `sourceMappingURL` comment
  * @returns undefined when the chunk has no map or refers to it by an absolute or data URL
  */
 function getSourceMapPath(chunk: string, content: string): string | undefined {
@@ -179,15 +186,16 @@ async function fileExists(filePath: string): Promise<boolean> {
  * Finds source maps of the client JavaScript chunks.
  *
  * Turbopack hashes maps separately from chunks (`0a1b2c.js` may refer to `9z8y.js.map`),
- * so maps are found by the `sourceMappingURL` comment of each chunk
+ * so maps are found by the `sourceMappingURL` comment of each chunk.
+ * Only the end of each chunk is read, a few at a time, so large builds do not load all the code into memory
  * @param distDir - absolute path to the Next.js build output directory
  */
 export async function findClientSourceMaps(distDir: string): Promise<ClientSourceMap[]> {
   const staticDir = path.join(distDir, STATIC_DIR);
   const chunks = (await listFiles(staticDir)).filter(entry => /\.[cm]?js$/.test(entry)).sort();
 
-  const maps = await Promise.all(chunks.map(async (chunk): Promise<ClientSourceMap | undefined> => {
-    const mapPath = getSourceMapPath(chunk, await readFile(path.join(staticDir, chunk), 'utf8'));
+  const maps = await mapConcurrently(chunks, MAX_PARALLEL_FILE_OPERATIONS, async (chunk): Promise<ClientSourceMap | undefined> => {
+    const mapPath = getSourceMapPath(chunk, await readFileTail(path.join(staticDir, chunk), CHUNK_TAIL_SIZE));
 
     if (mapPath === undefined || !await fileExists(path.join(staticDir, mapPath))) {
       return undefined;
@@ -198,7 +206,7 @@ export async function findClientSourceMaps(distDir: string): Promise<ClientSourc
       chunkUrl: `${PUBLIC_PATH_PREFIX}${STATIC_DIR}/${encodeUrlPath(chunk)}`,
       name: getSourceMapName(chunk),
     };
-  }));
+  });
 
   return maps.filter(map => map !== undefined);
 }

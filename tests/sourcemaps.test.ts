@@ -135,6 +135,22 @@ describe('findClientSourceMaps', () => {
     expect((await findClientSourceMaps(distDir)).map(map => map.name)).toEqual(names);
   });
 
+  it('finds the comment at the end of a chunk larger than the part that is read', async () => {
+    const distDir = await createTempDir({
+      'static/chunks/large.js': `${'a();\n'.repeat(10_000)}//# debugId=abc\n//# sourceMappingURL=large-map.js.map\n`,
+      'static/chunks/large-map.js.map': '{}',
+      'static/chunks/long-line.js': `${'b'.repeat(10_000)}//# sourceMappingURL=long-line.js.map`,
+      'static/chunks/long-line.js.map': '{}',
+    });
+
+    expect(await findClientSourceMaps(distDir)).toEqual([
+      expect.objectContaining({
+        path: path.join(distDir, 'static/chunks/large-map.js.map'),
+        chunkUrl: '/_next/static/chunks/large.js',
+      }),
+    ]);
+  });
+
   it('skips directories named like chunks', async () => {
     const distDir = await createTempDir({
       'static/chunks/app/feed.js/page-1f2e.js': 'a();\n//# sourceMappingURL=page-1f2e.js.map',

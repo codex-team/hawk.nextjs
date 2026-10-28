@@ -6,7 +6,7 @@ import { getDefaultCollectorEndpoint, getIntegrationId } from './token';
 import type { Collector } from './uploader';
 import { sendCommits, sendSourceMap } from './uploader';
 import { consoleColors, getErrorMessage, log } from './utils/log';
-import { forEachConcurrently } from './utils/pool';
+import { mapConcurrently } from './utils/pool';
 
 /**
  * Max number of source maps sent at the same time
@@ -144,7 +144,7 @@ async function uploadSourceMaps(collector: Collector, distDir: string): Promise<
 
   let sentCount = 0;
 
-  await forEachConcurrently(maps, MAX_PARALLEL_UPLOADS, async (map) => {
+  await mapConcurrently(maps, MAX_PARALLEL_UPLOADS, async (map) => {
     try {
       const content = prepareSourceMap(await readFile(map.path, 'utf8'), map.chunkUrl);
 
