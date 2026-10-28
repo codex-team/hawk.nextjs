@@ -311,6 +311,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hawk.so/browser@npm:^3.4.0":
+  version: 3.4.0
+  resolution: "@hawk.so/browser@npm:3.4.0"
+  dependencies:
+    "@hawk.so/core": "npm:^1.0.0"
+    error-stack-parser: "npm:^2.1.4"
+    web-vitals: "npm:^5.1.0"
+  checksum: 10c0/2e190b2547cbdb57ff245b0385a319c8610f40d16bdd9fe2a7afed56ee66839053e9f41e8eb8aa672c043b859e5f6f7a518e4f1c4f0e08eda6e238194bc2b7d0
+  languageName: node
+  linkType: hard
+
 "@hawk.so/core@npm:^1.0.0":
   version: 1.0.0
   resolution: "@hawk.so/core@npm:1.0.0"
@@ -320,22 +331,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hawk.so/javascript@npm:^3.3.5":
-  version: 3.3.5
-  resolution: "@hawk.so/javascript@npm:3.3.5"
-  dependencies:
-    "@hawk.so/core": "npm:^1.0.0"
-    error-stack-parser: "npm:^2.1.4"
-    web-vitals: "npm:^5.1.0"
-  checksum: 10c0/73d1180f6547c0ec6db103deced708d6c29cb35076783fa1a8cbe58d61c0ae7a0baa68730313784e9ebd9a61c8248ca5be47b152f8b950a7089eaac680ea4bd4
-  languageName: node
-  linkType: hard
-
 "@hawk.so/nextjs-example@workspace:example":
   version: 0.0.0-use.local
   resolution: "@hawk.so/nextjs-example@workspace:example"
   dependencies:
-    "@hawk.so/javascript": "npm:^3.3.5"
+    "@hawk.so/browser": "npm:^3.4.0"
     "@hawk.so/nextjs": "link:.."
     "@hawk.so/nodejs": "npm:^3.3.2"
     "@types/node": "npm:^24.19.2"

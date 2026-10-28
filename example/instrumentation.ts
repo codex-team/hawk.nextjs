@@ -1,7 +1,7 @@
 import type { Instrumentation } from 'next';
 
 /**
- * Initializes the Node.js Catcher when the server starts.
+ * Initializes the Node.js catcher when the server starts.
  * The catcher is imported dynamically to keep it out of the Edge runtime bundle
  */
 export async function register(): Promise<void> {

@@ -95,11 +95,11 @@ A version is unique only if you bump it for every deploy, otherwise errors of di
 
 To catch errors, use the Hawk catchers with the release id from the plugin:
 
-- [@hawk.so/javascript](https://github.com/codex-team/hawk.javascript) in the browser. Hawk applies the sent source maps to these errors.
+- [@hawk.so/browser](https://github.com/codex-team/hawk.javascript/tree/master/packages/browser) in the browser. Hawk applies the sent source maps to these errors.
 - [@hawk.so/nodejs](https://github.com/codex-team/hawk.nodejs) on the server. Hawk doesn't apply source maps to server errors, so their stack traces point to the compiled files in `.next/server`.
 
 ```shell
-yarn add @hawk.so/javascript @hawk.so/nodejs
+yarn add @hawk.so/browser @hawk.so/nodejs
 ```
 
 Both catchers below take the Integration Token from `NEXT_PUBLIC_HAWK_TOKEN`. The browser catcher has the token in the client code anyway, and Next.js inlines `NEXT_PUBLIC_` variables during the build like `HAWK_RELEASE`, so the running app needs no Hawk variables.
@@ -110,7 +110,7 @@ Create the catcher in `instrumentation-client.ts` in the project root (or in `sr
 
 ```ts
 // instrumentation-client.ts
-import HawkCatcher from '@hawk.so/javascript';
+import HawkCatcher from '@hawk.so/browser';
 
 const token = process.env.NEXT_PUBLIC_HAWK_TOKEN;
 

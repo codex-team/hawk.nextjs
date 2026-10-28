@@ -1,4 +1,4 @@
-import HawkCatcher from '@hawk.so/javascript';
+import HawkCatcher from '@hawk.so/browser';
 
 const token = process.env.NEXT_PUBLIC_HAWK_TOKEN;
 

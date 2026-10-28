@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@hawk.so/javascript": "^3.3.5",
+    "@hawk.so/browser": "^3.4.0",
     "@hawk.so/nextjs": "link:..",
     "@hawk.so/nodejs": "^3.3.2",
     "next": "^16.4.3",

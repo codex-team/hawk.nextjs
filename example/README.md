@@ -1,10 +1,10 @@
 # Hawk Next.js example
 
-Next.js app that sends releases with source maps to Hawk using `@hawk.so/nextjs` and catches errors with `@hawk.so/javascript` and `@hawk.so/nodejs`.
+Next.js app that sends releases with source maps to Hawk using `@hawk.so/nextjs` and catches errors with `@hawk.so/browser` and `@hawk.so/nodejs`.
 
 - [next.config.ts](./next.config.ts) connects the plugin
-- [instrumentation-client.ts](./instrumentation-client.ts) initializes the JavaScript Catcher with the release id
-- [instrumentation.ts](./instrumentation.ts) initializes the Node.js Catcher and sends server request errors
+- [instrumentation-client.ts](./instrumentation-client.ts) initializes the browser catcher with the release id
+- [instrumentation.ts](./instrumentation.ts) initializes the Node.js catcher and sends server request errors
 - [app/error.tsx](./app/error.tsx) reports errors caught by the error boundary
 - [app/error-button.tsx](./app/error-button.tsx) throws an error to check the stack trace in Hawk
 - [app/server-error/page.tsx](./app/server-error/page.tsx) throws an error on the server
