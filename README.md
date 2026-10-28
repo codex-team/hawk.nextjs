@@ -4,7 +4,7 @@ Sends releases with source maps from Next.js builds to [Hawk](https://hawk.so), 
 
 The package only sends releases, it doesn't catch errors. Use Hawk catchers for that, see [Error tracking](#error-tracking).
 
-Works with both Next.js bundlers: Turbopack (the default since Next.js 16) and webpack (`next build --webpack`). The plugin doesn't hook into the bundler: it runs after compilation using the Next.js build hook and reads client chunks and their source maps from `.next/static`, so it doesn't need bundler plugins like `@hawk.so/webpack-plugin`.
+Works with both Next.js bundlers: Turbopack (the default since Next.js 16) and webpack (`next build --webpack`).
 
 ## Install
 
