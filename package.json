@@ -1,30 +1,39 @@
 {
   "name": "@hawk.so/nextjs",
-  "version": "1.0.0",
-  "description": "Next.js integration for sending releases with source maps to Hawk",
+  "version": "1.1.0",
+  "description": "Hawk error tracking for Next.js: catches errors in the browser, Node.js and Edge, sends releases with source maps",
   "keywords": [
     "hawk",
     "nextjs",
+    "error tracking",
     "turbopack",
-    "source maps",
-    "error tracking"
+    "source maps"
   ],
   "repository": "https://github.com/codex-team/hawk.nextjs.git",
   "author": "CodeX <team@codex.so>",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "main": "./dist/server.cjs",
+  "module": "./dist/server.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
+      "edge-light": "./dist/edge.js",
+      "worker": "./dist/edge.js",
+      "workerd": "./dist/edge.js",
+      "browser": "./dist/client.js",
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
+    },
+    "./config": {
       "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "types": "./dist/config.d.ts",
+        "default": "./dist/config.js"
       },
       "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
+        "types": "./dist/config.d.cts",
+        "default": "./dist/config.cjs"
       }
     },
     "./global": {
@@ -36,6 +45,7 @@
     "dist",
     "global.d.ts"
   ],
+  "sideEffects": false,
   "workspaces": [
     "example"
   ],
@@ -43,7 +53,7 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsup",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
@@ -52,19 +62,34 @@
     "e2e": "yarn build && node scripts/e2e.mjs",
     "prepublishOnly": "yarn build"
   },
+  "dependencies": {
+    "@hawk.so/browser": "^3.4.0",
+    "@hawk.so/core": "^1.0.0",
+    "@hawk.so/types": "^0.5.8",
+    "error-stack-parser": "^2.1.4"
+  },
   "peerDependencies": {
-    "next": ">=15.4.1"
+    "next": ">=15.4.1",
+    "react": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/ws": "^8.18.2",
     "eslint": "^9.39.5",
     "eslint-config-codex": "^2.0.3",
+    "happy-dom": "^21.0.4",
     "next": "^16.4.3",
+    "playwright": "^1.64.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tsup": "^9.0.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.70.0",
     "vite": "^8.0.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "ws": "^8.22.0"
   },
   "packageManager": "yarn@4.18.1"
 }

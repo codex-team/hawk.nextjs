@@ -58,5 +58,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build the example and check sent release
+      - name: Install the browser for error tracking checks
+        run: yarn playwright install --with-deps chromium
+
+      - name: Build the example, check the sent release and caught errors
         run: yarn e2e ${{ matrix.args }}

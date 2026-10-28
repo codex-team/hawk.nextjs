@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 import type { CommitsOptions } from './commits';
+import { findMissingInstrumentationFiles } from './instrumentation';
 import { RELEASE_ENV_VARIABLE, resolveRelease } from './release';
 import { getIntegrationId } from './token';
 import type { BuildMetadata, UploadReleaseOptions } from './upload-release';
@@ -14,7 +15,7 @@ import { consoleColors, log } from './utils/log';
  */
 export interface HawkNextOptions {
   /**
-   * Hawk Integration Token. Default is the HAWK_TOKEN environment variable
+   * Hawk Integration Token. Default is the HAWK_TOKEN or NEXT_PUBLIC_HAWK_TOKEN environment variable
    */
   token?: string;
 
@@ -76,6 +77,12 @@ const MIN_NEXT_VERSION = '15.4.1';
 const DEFAULT_COMMITS_NUMBER = 5;
 
 /**
+ * Environment variables with the Integration Token, in priority order.
+ * The catchers read `NEXT_PUBLIC_HAWK_TOKEN`, so one variable is enough for the whole setup
+ */
+const TOKEN_ENV_VARIABLES = ['HAWK_TOKEN', 'NEXT_PUBLIC_HAWK_TOKEN'];
+
+/**
  * Checks that semver version is greater than or equal to the minimal one. Pre-release tags are ignored
  * @param version - version to check, e.g. `15.4.1-canary.2`
  * @param minVersion - minimal allowed version, e.g. `15.4.1`
@@ -107,6 +114,28 @@ function getNextVersion(projectDir: string): string | undefined {
     return (requireFromProject('next/package.json') as PackageJson).version;
   } catch (_error) {
     return undefined;
+  }
+}
+
+/**
+ * Returns the first non-empty token from the environment
+ */
+function getEnvToken(): string | undefined {
+  return TOKEN_ENV_VARIABLES.map(name => process.env[name]).find(value => value !== undefined && value !== '');
+}
+
+/**
+ * Prints a hint when the catchers are not connected, since the plugin only sends releases
+ * @param projectDir - absolute path to the project directory
+ * @param pageExtensions - `pageExtensions` from the Next.js config
+ */
+async function checkInstrumentationFiles(projectDir: string, pageExtensions: string[] | undefined): Promise<void> {
+  const missing = await findMissingInstrumentationFiles(projectDir, pageExtensions);
+
+  if (missing.length > 0) {
+    const files = missing.map(name => `${name}.ts`).join(' and ');
+
+    log(`${files} not found, so errors are not caught. See https://github.com/codex-team/hawk.nextjs#error-tracking`, consoleColors.fgYellow);
   }
 }
 
@@ -158,7 +187,7 @@ function applyHawkConfig(config: NextConfig, options: HawkNextOptions): NextConf
     return result;
   }
 
-  const token = options.token ?? process.env.HAWK_TOKEN;
+  const token = options.token ?? getEnvToken();
   const hasToken = token !== undefined && token !== '';
   const canUpload = hasToken && (options.collectorEndpoint !== undefined || getIntegrationId(token) !== undefined);
 
@@ -184,6 +213,7 @@ function applyHawkConfig(config: NextConfig, options: HawkNextOptions): NextConf
         await userHook(metadata);
       }
 
+      await checkInstrumentationFiles(metadata.projectDir, config.pageExtensions);
       await uploadRelease(metadata, uploadOptions);
     },
   };

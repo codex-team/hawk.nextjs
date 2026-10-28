@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { listFiles, readFileTail } from '../src/utils/fs';
+import { listFiles, readFileTail } from '../src/config/utils/fs';
 import { createTempDir } from './helpers';
 
 describe('listFiles', () => {

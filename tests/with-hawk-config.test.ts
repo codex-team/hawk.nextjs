@@ -2,10 +2,10 @@ import type { NextConfig } from 'next';
 import type * as NodeModule from 'node:module';
 import process from 'node:process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RELEASE_ENV_VARIABLE } from '../src/release';
-import { uploadRelease } from '../src/upload-release';
-import type { NextConfigFunction } from '../src/with-hawk-config';
-import { isVersionAtLeast, withHawkConfig } from '../src/with-hawk-config';
+import { RELEASE_ENV_VARIABLE } from '../src/config/release';
+import { uploadRelease } from '../src/config/upload-release';
+import type { NextConfigFunction } from '../src/config/with-hawk-config';
+import { isVersionAtLeast, withHawkConfig } from '../src/config/with-hawk-config';
 import { createToken, silenceLogs } from './helpers';
 
 const nextPackage = vi.hoisted(() => ({ version: '16.4.3' }));
@@ -15,7 +15,7 @@ vi.mock('node:module', async importOriginal => ({
   createRequire: () => () => nextPackage,
 }));
 
-vi.mock('../src/upload-release', () => ({
+vi.mock('../src/config/upload-release', () => ({
   uploadRelease: vi.fn(() => Promise.resolve()),
 }));
 
@@ -38,6 +38,7 @@ describe('withHawkConfig', () => {
     nextPackage.version = '16.4.3';
     vi.stubEnv(RELEASE_ENV_VARIABLE, '');
     vi.stubEnv('HAWK_TOKEN', '');
+    vi.stubEnv('NEXT_PUBLIC_HAWK_TOKEN', '');
     vi.mocked(uploadRelease).mockClear();
     silenceLogs();
   });
@@ -90,6 +91,23 @@ describe('withHawkConfig', () => {
     expect(config.productionBrowserSourceMaps).toBe(true);
 
     await runHook(config);
+
+    expect(vi.mocked(uploadRelease).mock.calls[0][1].token).toBe(token);
+  });
+
+  it('reads the token from NEXT_PUBLIC_HAWK_TOKEN used by the catchers', async () => {
+    vi.stubEnv('NEXT_PUBLIC_HAWK_TOKEN', token);
+
+    await runHook(withHawkConfig({}));
+
+    expect(vi.mocked(uploadRelease).mock.calls[0][1].token).toBe(token);
+  });
+
+  it('prefers HAWK_TOKEN to NEXT_PUBLIC_HAWK_TOKEN', async () => {
+    vi.stubEnv('HAWK_TOKEN', token);
+    vi.stubEnv('NEXT_PUBLIC_HAWK_TOKEN', 'public');
+
+    await runHook(withHawkConfig({}));
 
     expect(vi.mocked(uploadRelease).mock.calls[0][1].token).toBe(token);
   });

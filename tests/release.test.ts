@@ -1,6 +1,6 @@
 import process from 'node:process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { COMMIT_SHA_ENV_VARIABLES, RELEASE_ENV_VARIABLE, resolveRelease } from '../src/release';
+import { COMMIT_SHA_ENV_VARIABLES, RELEASE_ENV_VARIABLE, resolveRelease } from '../src/config/release';
 import { createTempDir } from './helpers';
 
 describe('resolveRelease', () => {

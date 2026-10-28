@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapConcurrently } from '../src/utils/pool';
+import { mapConcurrently } from '../src/config/utils/pool';
 
 describe('mapConcurrently', () => {
   it('returns results in the order of items with at most `limit` calls in progress', async () => {

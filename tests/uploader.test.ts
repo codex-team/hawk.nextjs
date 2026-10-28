@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Collector } from '../src/uploader';
-import { sendCommits, sendSourceMap } from '../src/uploader';
+import type { Collector } from '../src/config/uploader';
+import { sendCommits, sendSourceMap } from '../src/config/uploader';
 
 const collector: Collector = {
   endpoint: 'https://collector.test/release',

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findClientSourceMaps, normalizeSourcePath, prepareSourceMap } from '../src/sourcemaps';
+import { findClientSourceMaps, normalizeSourcePath, prepareSourceMap } from '../src/config/sourcemaps';
 import { createTempDir, turbopackIndexedMap, turbopackMap } from './helpers';
 
 describe('normalizeSourcePath', () => {

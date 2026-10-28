@@ -1,18 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useHawkError } from '@hawk.so/nextjs';
 
 /**
- * Errors caught by an error boundary are only logged to the console by Next.js.
- * `reportError` reports them as uncaught, so the browser catcher sends them to Hawk.
- * Server errors have a `digest` and are already sent from `onRequestError` in instrumentation.ts
+ * Errors caught by an error boundary are only logged to the console by Next.js, `useHawkError` sends them.
+ * Server errors have a `digest` and are skipped: they are already sent from `onRequestError`
  */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    if (error.digest === undefined) {
-      reportError(error);
-    }
-  }, [error]);
+  useHawkError(error);
 
   return (
     <main>
