@@ -1,0 +1,24 @@
+{
+  "name": "@hawk.so/nextjs-example",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Demonstrates how to connect @hawk.so/nextjs to a Next.js app",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@hawk.so/browser": "^3.4.0",
+    "@hawk.so/nextjs": "link:..",
+    "@hawk.so/nodejs": "^3.3.2",
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "typescript": "^5.9.3"
+  }
+}

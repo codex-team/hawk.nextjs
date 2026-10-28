@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# Tests
+coverage/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+.pnp.*
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json
