@@ -2,9 +2,15 @@
 
 Sends releases with source maps from Next.js builds to [Hawk](https://hawk.so), so errors from the browser show the original source code instead of minified chunks.
 
-The package only sends releases, it doesn't catch errors. Use Hawk catchers for that, see [Error tracking](#error-tracking).
+- 🌟 Client source maps sending
+- ⚡ Turbopack and webpack support
+- 🏷️ Automatic release id from CI, git or build time
+- 💬 Recent commits sending
+- 🙈 Source maps removal after sending, so the source code is not published
+- 🧩 One-line setup in `next.config`
+- 🛡️ Build never fails because of sending errors
 
-Works with both Next.js bundlers: Turbopack (the default since Next.js 16) and webpack (`next build --webpack`).
+The package only sends releases, it doesn't catch errors. Use Hawk catchers for that, see [Error tracking](#error-tracking).
 
 ## Install
 
