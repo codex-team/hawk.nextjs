@@ -337,6 +337,7 @@ __metadata:
   dependencies:
     "@hawk.so/javascript": "npm:^3.3.5"
     "@hawk.so/nextjs": "link:.."
+    "@hawk.so/nodejs": "npm:^3.3.2"
     "@types/node": "npm:^24.19.2"
     "@types/react": "npm:^19.3.0"
     next: "npm:^16.4.3"
@@ -370,12 +371,32 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@hawk.so/nodejs@npm:^3.3.2":
+  version: 3.3.2
+  resolution: "@hawk.so/nodejs@npm:3.3.2"
+  dependencies:
+    "@hawk.so/types": "npm:^0.5.8"
+    axios: "npm:^0.21.1"
+    stack-trace: "npm:^0.0.10"
+  checksum: 10c0/778208243a5c31be378fec9515c46475445d506873736660b68f07692274ac1f61fb90b3da9651ea454df563b6493c6284be82a56db65720e5e188a0fd9ae95a
+  languageName: node
+  linkType: hard
+
 "@hawk.so/types@npm:0.5.8":
   version: 0.5.8
   resolution: "@hawk.so/types@npm:0.5.8"
   dependencies:
     bson: "npm:^7.0.0"
   checksum: 10c0/95d45be58594b30aad097d25beb800e2d236cf869b3f57916a67bea841263cab96eecf4d678dd86f94ec46318759b9d566c42228a450c1d05689b3f326654d53
+  languageName: node
+  linkType: hard
+
+"@hawk.so/types@npm:^0.5.8":
+  version: 0.5.9
+  resolution: "@hawk.so/types@npm:0.5.9"
+  dependencies:
+    bson: "npm:^7.0.0"
+  checksum: 10c0/08f7fe65734d85fed65ef176cb8a9384dfc6ac8e6a6021900a274eac4701350033cbacb82eea2919558751e1f95c4b0e6d0e29f0bb48cb696b8d74f3e97a0f9a
   languageName: node
   linkType: hard
 
@@ -1498,6 +1519,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"axios@npm:^0.21.1":
+  version: 0.21.4
+  resolution: "axios@npm:0.21.4"
+  dependencies:
+    follow-redirects: "npm:^1.14.0"
+  checksum: 10c0/fbcff55ec68f71f02d3773d467db2fcecdf04e749826c82c2427a232f9eba63242150a05f15af9ef15818352b814257541155de0281f8fb2b7e8a5b79f7f2142
+  languageName: node
+  linkType: hard
+
 "balanced-match@npm:^1.0.0":
   version: 1.0.2
   resolution: "balanced-match@npm:1.0.2"
@@ -2568,6 +2598,16 @@ __metadata:
   version: 3.4.4
   resolution: "flatted@npm:3.4.4"
   checksum: 10c0/a3a52a88ea5a4c333e5a1f097dcd87a037fa31c236a77cf46222c2aa4036ef895ab9bc76138a66d9dc22bdb3652128f9598cd26e7439561bf19f67276e2bc37e
+  languageName: node
+  linkType: hard
+
+"follow-redirects@npm:^1.14.0":
+  version: 1.16.2
+  resolution: "follow-redirects@npm:1.16.2"
+  peerDependenciesMeta:
+    debug:
+      optional: true
+  checksum: 10c0/ff38c8ceb904e505021057f58d395ea5f2e7c34257032960a76b21df1726395ce753f5678b6ee3b15210a557277c00b2607c67b682ee4dec1f33cb5147e08e90
   languageName: node
   linkType: hard
 
@@ -4415,6 +4455,13 @@ __metadata:
   version: 3.0.24
   resolution: "spdx-license-ids@npm:3.0.24"
   checksum: 10c0/645db2663d5e8cf6478e1285372df10d915b4a7dd0e61594794e357a02ca39a9bca6b019e712fbd8611515675170d78667a4fd4d8b5e525b91872ef6bb749d0c
+  languageName: node
+  linkType: hard
+
+"stack-trace@npm:^0.0.10":
+  version: 0.0.10
+  resolution: "stack-trace@npm:0.0.10"
+  checksum: 10c0/9ff3dabfad4049b635a85456f927a075c9d0c210e3ea336412d18220b2a86cbb9b13ec46d6c37b70a302a4ea4d49e30e5d4944dd60ae784073f1cde778ac8f4b
   languageName: node
   linkType: hard
 

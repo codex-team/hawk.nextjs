@@ -8,6 +8,7 @@ export default function Home() {
       <p>Release: <code>{process.env.HAWK_RELEASE}</code></p>
       <ErrorButton />
       <p><Link href="/posts/hello">Dynamic route</Link></p>
+      <p><Link href="/server-error">Server error</Link></p>
     </main>
   );
 }
