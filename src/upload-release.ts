@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { deleteClientSourceMaps, stripSourceMappingUrlComments } from './cleanup';
+import type { Commit } from './commits';
 import { getCommits } from './commits';
 import { findClientSourceMaps, prepareSourceMap } from './sourcemaps';
 import { getDefaultCollectorEndpoint, getIntegrationId } from './token';
@@ -114,13 +115,24 @@ function getCollector(options: UploadReleaseOptions): Collector | undefined {
  * @param count - number of commits
  */
 async function uploadCommits(collector: Collector, repo: string, count: number): Promise<void> {
+  let commits: Commit[];
+
   try {
-    const commits = await getCommits(repo, count);
+    commits = await getCommits(repo, count);
+  } catch (_error) {
+    /**
+     * Usual for builds in Docker or CI steps without the `.git` directory, so not an error
+     */
+    log('Commits are not sent: git history is not available. Pass `commits: false` to skip them', consoleColors.fgYellow);
 
-    if (commits.length === 0) {
-      return;
-    }
+    return;
+  }
 
+  if (commits.length === 0) {
+    return;
+  }
+
+  try {
     await sendCommits(collector, commits);
     log(`Recent commits sent: ${commits.length}`, consoleColors.fgGreen);
   } catch (error) {

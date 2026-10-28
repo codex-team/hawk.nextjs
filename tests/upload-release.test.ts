@@ -187,6 +187,26 @@ describe('uploadRelease', () => {
     ]);
   });
 
+  it('sends source maps without commits when git history is not available', async () => {
+    const logSpy = silenceLogs();
+    const distDir = await createBuild();
+
+    await uploadRelease({
+      projectDir: distDir,
+      distDir,
+    }, {
+      ...baseOptions,
+      commits: {
+        repo: path.join(distDir, 'missing'),
+        number: 1,
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(requests.every(request => request.commits === undefined)).toBe(true);
+    expect(logSpy.mock.calls.flat().join('\n')).toContain('Commits are not sent: git history is not available');
+  });
+
   it('does nothing without a token', async () => {
     const distDir = await createBuild();
 
