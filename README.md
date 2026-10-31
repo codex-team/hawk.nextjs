@@ -32,22 +32,9 @@ NEXT_PUBLIC_HAWK_TOKEN=eyJpbnRlZ3JhdGlvbklk...
 
 The plugin and the catchers read the same variable. The browser catcher has the token in the client code anyway, and Next.js inlines `NEXT_PUBLIC_` variables during the build, so the running app needs no Hawk variables.
 
-Then add four files.
+Then add three files. Releases with source maps are sent from the Next.js config, see [Sending releases](#sending-releases).
 
-**1. `next.config.ts`** sends the release with source maps on `next build`:
-
-```ts
-import type { NextConfig } from 'next';
-import { withHawkConfig } from '@hawk.so/nextjs/config';
-
-const nextConfig: NextConfig = {
-  // your config
-};
-
-export default withHawkConfig(nextConfig);
-```
-
-**2. `instrumentation-client.ts`** in the project root (or in `src`) catches errors in the browser. Next.js runs it before the app starts:
+**1. `instrumentation-client.ts`** in the project root (or in `src`) catches errors in the browser. Next.js runs it before the app starts:
 
 ```ts
 import * as Hawk from '@hawk.so/nextjs';
@@ -57,7 +44,7 @@ Hawk.init();
 export const onRouterTransitionStart = Hawk.onRouterTransitionStart;
 ```
 
-**3. `instrumentation.ts`** catches errors on the server, in Node.js and Edge runtimes:
+**2. `instrumentation.ts`** catches errors on the server, in Node.js and Edge runtimes:
 
 ```ts
 import * as Hawk from '@hawk.so/nextjs';
@@ -69,7 +56,7 @@ export function register() {
 export const onRequestError = Hawk.onRequestError;
 ```
 
-**4. `app/global-error.tsx`** catches errors of the root layout and shows a minimal error page:
+**3. `app/global-error.tsx`** catches errors of the root layout and shows a minimal error page:
 
 ```tsx
 'use client';
@@ -158,9 +145,38 @@ Pass different options to the browser and the server by calling `init()` with th
 - The Edge runtime has no process events, so only errors passed to `onRequestError` and `send()` are sent. `next start` passes errors of Edge routes to `onRequestError` of the Node.js runtime.
 - Hawk doesn't apply source maps to server errors yet, so their stack traces point to the compiled files in `.next/server`.
 
-## Plugin options
+## Sending releases
 
-Pass them as the second argument of `withHawkConfig`:
+> [!IMPORTANT]
+> We strongly recommend setting up release sending. With the source maps from the release, Hawk shows fragments of your source code around browser errors instead of minified bundle chunks. Without this, it is awkward and difficult to understand the problem.
+
+`withHawkConfig` sends the release on `next build`. Put it in `next.config.ts`, `next.config.mjs` or `next.config.js`: import it from `@hawk.so/nextjs/config` and wrap the config you export.
+
+```ts
+import type { NextConfig } from 'next';
+import { withHawkConfig } from '@hawk.so/nextjs/config';
+
+const nextConfig: NextConfig = {
+  // your config
+};
+
+export default withHawkConfig(nextConfig);
+```
+
+If the file exports a function, wrap that function the same way: `export default withHawkConfig((phase, { defaultConfig }) => ({ ... }), options)`.
+
+On `next build` the plugin:
+
+1. resolves the release id and exposes it to your code as `process.env.HAWK_RELEASE`
+2. enables client source maps (`productionBrowserSourceMaps`) unless you set it yourself
+3. after compilation sends recent commits and client source maps to Hawk
+4. removes client source maps and `sourceMappingURL` comments from `.next/static`, so the source code is not published
+
+`next dev` sends nothing.
+
+### Plugin options
+
+They apply only to the release sent from this file. Pass them as the second argument of `withHawkConfig`:
 
 ```ts
 export default withHawkConfig(nextConfig, {
@@ -174,17 +190,6 @@ export default withHawkConfig(nextConfig, {
 | `release` | string/number | optional | Unique identifier of the release. See [Release id](#release-id) |
 | `removeSourceMaps` | boolean | optional | Shows if the plugin should remove client source maps after sending. Default is `true` |
 | `commits` | boolean/object | optional | Sends recent commits with the release. Default is `true`. Pass `false` to disable or `{ repo, number }` to set the path to the git repository (default is the project directory) and the number of commits (default is `5`) |
-
-Config functions are supported as well: `withHawkConfig((phase, { defaultConfig }) => ({ ... }), options)`.
-
-On `next build` the plugin:
-
-1. resolves the release id and exposes it to your code as `process.env.HAWK_RELEASE`
-2. enables client source maps (`productionBrowserSourceMaps`) unless you set it yourself
-3. after compilation sends recent commits and client source maps to Hawk
-4. removes client source maps and `sourceMappingURL` comments from `.next/static`, so the source code is not published
-
-`next dev` sends nothing.
 
 ### Release id
 
@@ -235,7 +240,7 @@ A version is unique only if you bump it for every deploy, otherwise errors of di
 
 If you connected `@hawk.so/browser` and `@hawk.so/nodejs` yourself:
 
-1. Import `withHawkConfig` from `@hawk.so/nextjs/config` instead of `@hawk.so/nextjs`.
+1. In `next.config.ts` (or `.js` / `.mjs`), wrap the exported config with `withHawkConfig` from `@hawk.so/nextjs/config`. See [Sending releases](#sending-releases).
 2. Replace the catchers in `instrumentation-client.ts` and `instrumentation.ts` with the files from [Connect](#connect).
 3. Replace `reportError(error)` in `error.tsx` with `useHawkError(error)`.
 4. Remove `@hawk.so/browser` and `@hawk.so/nodejs` from your dependencies, and `HAWK_TOKEN` if it has the same value as `NEXT_PUBLIC_HAWK_TOKEN`.
