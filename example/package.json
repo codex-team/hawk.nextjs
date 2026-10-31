@@ -9,9 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@hawk.so/browser": "^3.4.0",
     "@hawk.so/nextjs": "link:..",
-    "@hawk.so/nodejs": "^3.3.2",
     "next": "^16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

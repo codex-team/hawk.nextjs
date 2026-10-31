@@ -1,16 +1,18 @@
 # Hawk Next.js
 
-Sends releases with source maps from Next.js builds to [Hawk](https://hawk.so), so errors from the browser show the original source code instead of minified chunks.
+Error tracking for Next.js apps with [Hawk](https://hawk.so). Catches errors in the browser, on the server and in the Edge runtime, and sends releases with source maps, so errors from the browser show the original source code instead of minified chunks.
 
+- 🐞 Errors from the browser, Node.js and Edge runtimes with one import
+- 🧭 Errors of server components, route handlers, server actions and middleware with the route data
+- 🧱 Ready error pages and error boundary for React
+- 🙅 `redirect()`, `notFound()` and other Next.js control flow errors are skipped
+- ⏱️ Events are delivered before serverless functions are frozen
 - 🌟 Client source maps sending
 - ⚡ Turbopack and webpack support
 - 🏷️ Automatic release id from CI, git or build time
 - 💬 Recent commits sending
 - 🙈 Source maps removal after sending, so the source code is not published
-- 🧩 One-line setup in `next.config`
 - 🛡️ Build never fails because of sending errors
-
-The package only sends releases, it doesn't catch errors. Use Hawk catchers for that, see [Error tracking](#error-tracking).
 
 ## Install
 
@@ -18,25 +20,160 @@ The package only sends releases, it doesn't catch errors. Use Hawk catchers for 
 yarn add @hawk.so/nextjs
 ```
 
-Install it as a regular dependency, not with `-D`: `next start` loads `next.config` too, and fails with `Cannot find module '@hawk.so/nextjs'` when production installs skip dev dependencies.
+Install it as a regular dependency, not with `-D`: `next start` loads `next.config` too, and fails with `Cannot find module '@hawk.so/nextjs/config'` when production installs skip dev dependencies.
 
 ## Connect
 
-Wrap your Next.js config with `withHawkConfig`:
+Put your project's Integration Token to the `NEXT_PUBLIC_HAWK_TOKEN` environment variable of the build, e.g. in `.env`:
+
+```shell
+NEXT_PUBLIC_HAWK_TOKEN=eyJpbnRlZ3JhdGlvbklk...
+```
+
+The plugin and the catchers read the same variable. The browser catcher has the token in the client code anyway, and Next.js inlines `NEXT_PUBLIC_` variables during the build, so the running app needs no Hawk variables.
+
+Then add four files.
+
+**1. `next.config.ts`** sends the release with source maps on `next build`:
 
 ```ts
-// next.config.ts
 import type { NextConfig } from 'next';
-import { withHawkConfig } from '@hawk.so/nextjs';
+import { withHawkConfig } from '@hawk.so/nextjs/config';
 
 const nextConfig: NextConfig = {
   // your config
 };
 
+export default withHawkConfig(nextConfig);
+```
+
+**2. `instrumentation-client.ts`** in the project root (or in `src`) catches errors in the browser. Next.js runs it before the app starts:
+
+```ts
+import * as Hawk from '@hawk.so/nextjs';
+
+Hawk.init();
+
+export const onRouterTransitionStart = Hawk.onRouterTransitionStart;
+```
+
+**3. `instrumentation.ts`** catches errors on the server, in Node.js and Edge runtimes:
+
+```ts
+import * as Hawk from '@hawk.so/nextjs';
+
+export function register() {
+  Hawk.init();
+}
+
+export const onRequestError = Hawk.onRequestError;
+```
+
+**4. `app/global-error.tsx`** catches errors of the root layout and shows a minimal error page:
+
+```tsx
+'use client';
+
+export { HawkGlobalError as default } from '@hawk.so/nextjs';
+```
+
+Next.js only logs errors shown by error pages, so send them from your `error.tsx` files with `useHawkError`:
+
+```tsx
+'use client';
+
+import { useHawkError } from '@hawk.so/nextjs';
+
+export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useHawkError(error);
+
+  return <button type="button" onClick={reset}>Try again</button>;
+}
+```
+
+See the [example](./example) app with all of them.
+
+## What is caught
+
+| Error | Caught by |
+| -- | -- |
+| Browser: event handlers, effects, timers, unhandled rejections | `init()` in `instrumentation-client.ts` |
+| Errors shown by `error.tsx` | `useHawkError(error)` |
+| Errors of the root layout | `HawkGlobalError` in `global-error.tsx` |
+| Errors of a component tree | `<HawkErrorBoundary>` |
+| Server components, route handlers, server actions, middleware | `onRequestError` in `instrumentation.ts` |
+| Uncaught exceptions and unhandled rejections of the Node.js server | `init()` in `instrumentation.ts` |
+| Errors you catch yourself | `Hawk.send(error)` |
+
+Next.js uses errors for `redirect()`, `notFound()`, `forbidden()` and dynamic rendering bailouts. They are part of the normal flow and are not sent.
+
+Server errors reach the error pages in the browser with a `digest` and a generic message in production. They are already sent from the server, so `useHawkError` and the boundaries skip them. The server event has the same digest in `addons.nextjs.digest`, so you can find it by the digest shown on the page.
+
+## API
+
+All functions are imported from `@hawk.so/nextjs` and work in the browser, on the server and in the Edge runtime: Next.js picks the build for each runtime.
+
+| name | description |
+| -- | -- |
+| `init(options?)` | Creates the catcher. Call it in `instrumentation-client.ts` and in `register()` of `instrumentation.ts`. See [options](#init-options) |
+| `send(error, context?, user?)` | Sends an error or a message. `user` is used on the server only, in the browser use `setUser()` |
+| `setUser(user)`, `clearUser()` | Sets the user sent with every event, in the browser only |
+| `setContext(context)` | Sets data sent with every event. On the server it is shared by all requests of the process |
+| `breadcrumbs.add(breadcrumb)`, `.get()`, `.clear()` | Actions that happened before the error, in the browser only. Clicks, requests and navigations are added automatically |
+| `flush(timeout?)` | Waits for the events being sent, 2 seconds at most by default. Resolves with `false` on timeout |
+| `onRequestError` | Export it from `instrumentation.ts` to send errors of server components, route handlers, server actions and middleware |
+| `onRouterTransitionStart` | Export it from `instrumentation-client.ts` to add a breadcrumb for every navigation |
+| `useHawkError(error)` | Sends the error passed to `error.tsx` |
+| `HawkGlobalError` | Ready `global-error.tsx` |
+| `HawkErrorBoundary` | Error boundary that sends errors of its children. Props: `fallback` (element or `({ error, reset }) => element`) and `onError(error, info)` |
+
+```tsx
+<HawkErrorBoundary fallback={({ reset }) => <button onClick={reset}>Reload the widget</button>}>
+  <Widget />
+</HawkErrorBoundary>
+```
+
+### Init options
+
+| name | type | description |
+| -- | -- | -- |
+| `token` | string | Integration Token. Default is the `NEXT_PUBLIC_HAWK_TOKEN` environment variable, on the server `HAWK_TOKEN` is checked first. Without a token nothing is sent |
+| `release` | string | Release id. Default is `process.env.HAWK_RELEASE` set by the plugin, see [Release id](#release-id) |
+| `context` | object | Data sent with every event |
+| `beforeSend` | function | Filters or modifies events. Return the event to send it or `false` to drop it |
+| `disableGlobalErrorsHandling` | boolean | Disables catching of uncaught errors and unhandled rejections |
+| `collectorEndpoint` | string | Collector endpoint for self-hosted Hawk: WebSocket URL in the browser, HTTP URL on the server |
+| `user` | object | Current user, in the browser only |
+| `breadcrumbs` | false/object | Breadcrumbs options of [@hawk.so/browser](https://github.com/codex-team/hawk.javascript/tree/master/packages/browser), in the browser only |
+| `consoleTracking` | boolean | Sends recent console output with the events, in the browser only. Default is `true` |
+| `issues` | false/object | Web Vitals and long tasks detection of [@hawk.so/browser](https://github.com/codex-team/hawk.javascript/tree/master/packages/browser), in the browser only |
+
+Pass different options to the browser and the server by calling `init()` with them in each file.
+
+### On the server
+
+- The server handles requests of many users at once, so there is no current user: `setUser()` is ignored. Pass the user with the event instead: `Hawk.send(error, { orderId }, { id: user.id })`.
+- `onRequestError` waits for sending and passes it to `waitUntil` where the platform supports it, e.g. on Vercel. If you call `send()` right before a serverless function returns, wait for it with `await Hawk.flush()`.
+- Events have Next.js data in `addons.nextjs`: `runtime`, `routerKind`, `routePath`, `routeType`, `method`, `path`, `digest` and the `host`, `referer` and `user-agent` headers. Cookies, authorization and IP addresses are not sent.
+- The Edge runtime has no process events, so only errors passed to `onRequestError` and `send()` are sent. `next start` passes errors of Edge routes to `onRequestError` of the Node.js runtime.
+- Hawk doesn't apply source maps to server errors yet, so their stack traces point to the compiled files in `.next/server`.
+
+## Plugin options
+
+Pass them as the second argument of `withHawkConfig`:
+
+```ts
 export default withHawkConfig(nextConfig, {
-  token: process.env.HAWK_TOKEN, // Your project's Integration Token
+  commits: false,
 });
 ```
+
+| name | type | required | description |
+| -- | -- | -- | -- |
+| `token` | string | optional | Your project's Integration Token. Default is the `HAWK_TOKEN` or `NEXT_PUBLIC_HAWK_TOKEN` environment variable. Without a token the release is not sent |
+| `release` | string/number | optional | Unique identifier of the release. See [Release id](#release-id) |
+| `removeSourceMaps` | boolean | optional | Shows if the plugin should remove client source maps after sending. Default is `true` |
+| `commits` | boolean/object | optional | Sends recent commits with the release. Default is `true`. Pass `false` to disable or `{ repo, number }` to set the path to the git repository (default is the project directory) and the number of commits (default is `5`) |
 
 Config functions are supported as well: `withHawkConfig((phase, { defaultConfig }) => ({ ... }), options)`.
 
@@ -49,26 +186,17 @@ On `next build` the plugin:
 
 `next dev` sends nothing.
 
-### Plugin options
-
-| name | type | required | description |
-| -- | -- | -- | -- |
-| `token` | string | optional | Your project's Integration Token. Default is the `HAWK_TOKEN` environment variable. Without a token the release is not sent |
-| `release` | string/number | optional | Unique identifier of the release. See [Release id](#release-id) |
-| `removeSourceMaps` | boolean | optional | Shows if the plugin should remove client source maps after sending. Default is `true` |
-| `commits` | boolean/object | optional | Sends recent commits with the release. Default is `true`. Pass `false` to disable or `{ repo, number }` to set the path to the git repository (default is the project directory) and the number of commits (default is `5`) |
-
 ### Release id
 
 Release id links error events to the source maps and commits sent from the build. The plugin picks it once per build, in this order:
 
 1. `release` option
 2. `HAWK_RELEASE` environment variable
-3. commit SHA from the CI environment: GitHub Actions (`GITHUB_SHA`), GitLab CI (`CI_COMMIT_SHA`), Vercel (`VERCEL_GIT_COMMIT_SHA`), Netlify, Cloudflare Pages, CircleCI and [others](./src/release.ts)
+3. commit SHA from the CI environment: GitHub Actions (`GITHUB_SHA`), GitLab CI (`CI_COMMIT_SHA`), Vercel (`VERCEL_GIT_COMMIT_SHA`), Netlify, Cloudflare Pages, CircleCI and [others](./src/config/release.ts)
 4. current commit: `git rev-parse HEAD`
 5. build start time, e.g. `2026-10-27T18:30:00.000Z`
 
-Whatever is picked, the source maps and your code get the same value: the plugin inlines it into the build as `process.env.HAWK_RELEASE`. You don't need to set this variable when the app runs, just pass it to the catchers, see [Error tracking](#error-tracking).
+Whatever is picked, the source maps and your code get the same value: the plugin inlines it into the build as `process.env.HAWK_RELEASE`, and `init()` takes it from there. You don't need to set this variable when the app runs.
 
 Production builds often run without git and CI variables, for example in a Docker build or a separate Kubernetes pod. Then the release is the build time. Source maps still work, but commits are not sent and the release name tells nothing about the deployed version. To get meaningful releases, pass the id from your pipeline with the `HAWK_RELEASE` environment variable:
 
@@ -91,101 +219,9 @@ export default withHawkConfig(nextConfig, {
 
 A version is unique only if you bump it for every deploy, otherwise errors of different builds get into the same release.
 
-## Error tracking
-
-To catch errors, use the Hawk catchers with the release id from the plugin:
-
-- [@hawk.so/browser](https://github.com/codex-team/hawk.javascript/tree/master/packages/browser) in the browser. Hawk applies the sent source maps to these errors.
-- [@hawk.so/nodejs](https://github.com/codex-team/hawk.nodejs) on the server. Hawk doesn't apply source maps to server errors, so their stack traces point to the compiled files in `.next/server`.
-
-```shell
-yarn add @hawk.so/browser @hawk.so/nodejs
-```
-
-Both catchers below take the Integration Token from `NEXT_PUBLIC_HAWK_TOKEN`. The browser catcher has the token in the client code anyway, and Next.js inlines `NEXT_PUBLIC_` variables during the build like `HAWK_RELEASE`, so the running app needs no Hawk variables.
-
-### Browser
-
-Create the catcher in `instrumentation-client.ts` in the project root (or in `src`). Next.js runs this file before the app starts, so the catcher gets errors from event handlers, effects and unhandled promise rejections.
-
-```ts
-// instrumentation-client.ts
-import HawkCatcher from '@hawk.so/browser';
-
-const token = process.env.NEXT_PUBLIC_HAWK_TOKEN;
-
-if (token) {
-  new HawkCatcher({
-    token,
-    release: process.env.HAWK_RELEASE,
-  });
-}
-```
-
-Errors caught by your error boundaries (`error.tsx` and a custom `global-error.tsx`) are only logged to the console by Next.js. Report them with `reportError`, so the catcher gets them like uncaught errors:
-
-```tsx
-// app/error.tsx
-'use client';
-
-import { useEffect } from 'react';
-
-export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    // Server errors have a digest and are sent by the Node.js catcher
-    if (error.digest === undefined) {
-      reportError(error);
-    }
-  }, [error]);
-
-  return <button type="button" onClick={reset}>Try again</button>;
-}
-```
-
-### Server
-
-Initialize the catcher in `instrumentation.ts` and send request errors from the `onRequestError` hook:
-
-```ts
-// instrumentation.ts
-import type { Instrumentation } from 'next';
-
-export async function register() {
-  const token = process.env.NEXT_PUBLIC_HAWK_TOKEN;
-
-  if (process.env.NEXT_RUNTIME === 'nodejs' && token) {
-    const { default: HawkCatcher } = await import('@hawk.so/nodejs');
-
-    HawkCatcher.init({
-      token,
-      release: process.env.HAWK_RELEASE,
-    });
-  }
-}
-
-export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { default: HawkCatcher } = await import('@hawk.so/nodejs');
-
-    HawkCatcher.send(error as Error, {
-      method: request.method,
-      path: request.path,
-      routePath: context.routePath,
-      routeType: context.routeType,
-    });
-  }
-};
-```
-
-- `register` runs once on server start. The catcher also handles `uncaughtException` and `unhandledRejection`.
-- Next.js handles errors of server components, route handlers and server actions itself, so they reach the catcher only through `onRequestError`.
-- `@hawk.so/nodejs` works only in the Node.js runtime. It is imported dynamically to keep it out of Edge bundles, so errors from the Edge runtime are not sent.
-
-See the [example](./example) app with both catchers.
-
 ### TypeScript
 
-`process.env.HAWK_RELEASE` is typed automatically when you import the plugin in `next.config.ts`. If your config is a JavaScript file, add the declaration to `tsconfig.json`:
+`process.env.HAWK_RELEASE` is typed automatically when you import the package. If your config is a JavaScript file and you don't import the package in TypeScript files, add the declaration to `tsconfig.json`:
 
 ```json
 {
@@ -195,9 +231,19 @@ See the [example](./example) app with both catchers.
 }
 ```
 
+## Migration from Hawk catchers
+
+If you connected `@hawk.so/browser` and `@hawk.so/nodejs` yourself:
+
+1. Import `withHawkConfig` from `@hawk.so/nextjs/config` instead of `@hawk.so/nextjs`.
+2. Replace the catchers in `instrumentation-client.ts` and `instrumentation.ts` with the files from [Connect](#connect).
+3. Replace `reportError(error)` in `error.tsx` with `useHawkError(error)`.
+4. Remove `@hawk.so/browser` and `@hawk.so/nodejs` from your dependencies, and `HAWK_TOKEN` if it has the same value as `NEXT_PUBLIC_HAWK_TOKEN`.
+
 ## Requirements
 
 - Next.js 15.4.1 or newer: the plugin uses the `compiler.runAfterProductionCompile` build hook
+- React 18.2 or newer
 - Node.js 20.9 or newer
 
 ## Notes
@@ -213,7 +259,7 @@ See the [example](./example) app with both catchers.
 yarn          # install dependencies
 yarn lint     # ESLint
 yarn test     # unit tests
-yarn e2e      # build the example app and check what is sent to a mock collector
+yarn e2e      # build and start the example app, check the release and the events received by a mock collector
 ```
 
-`yarn e2e --debug-ids` checks indexed source maps produced with `turbopack.debugIds`, `yarn e2e --webpack` checks the webpack build.
+`yarn e2e` opens the example in Chromium, install it once with `yarn playwright install chromium`. `yarn e2e --debug-ids` checks indexed source maps produced with `turbopack.debugIds`, `yarn e2e --webpack` checks the webpack build.

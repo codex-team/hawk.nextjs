@@ -2,9 +2,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UploadReleaseOptions } from '../src/upload-release';
-import { uploadRelease } from '../src/upload-release';
-import { listFiles } from '../src/utils/fs';
+import type { UploadReleaseOptions } from '../src/config/upload-release';
+import { uploadRelease } from '../src/config/upload-release';
+import { listFiles } from '../src/config/utils/fs';
 import { createTempDir, createToken, silenceLogs, turbopackMap } from './helpers';
 
 /**

@@ -1,4 +1,4 @@
-import { withHawkConfig } from '@hawk.so/nextjs';
+import { withHawkConfig } from '@hawk.so/nextjs/config';
 import type { NextConfig } from 'next';
 import path from 'node:path';
 
@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
 };
 
 export default withHawkConfig(nextConfig, {
-  token: process.env.HAWK_TOKEN,
+  /**
+   * Lets the e2e test send the release to the mock collector
+   */
   collectorEndpoint: process.env.HAWK_COLLECTOR_ENDPOINT,
 });

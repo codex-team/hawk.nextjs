@@ -4,8 +4,27 @@ import { fileURLToPath } from 'node:url';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * CodeX config applies TypeScript rules to `.ts` files only
+ */
+const typescriptConfig = CodeX.find(config => config.name === 'codex/typescript');
+
 export default [
   ...CodeX,
+  {
+    ...typescriptConfig,
+    name: 'hawk-nextjs/tsx',
+    files: [
+      '**/*.tsx',
+    ],
+    languageOptions: {
+      ...typescriptConfig.languageOptions,
+      parserOptions: {
+        ...typescriptConfig.languageOptions.parserOptions,
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
   {
     name: 'hawk-nextjs/ignores',
     ignores: [
@@ -16,6 +35,7 @@ export default [
     name: 'hawk-nextjs/typescript',
     files: [
       '**/*.ts',
+      '**/*.tsx',
     ],
     languageOptions: {
       parserOptions: {
@@ -48,6 +68,21 @@ export default [
     },
   },
   {
+    name: 'hawk-nextjs/runtime',
+    files: [
+      'src/client/**',
+      'src/common/**',
+      'src/react/**',
+      'src/server/**',
+    ],
+    rules: {
+      /**
+       * Runtime code is bundled into the app. Next.js inlines `process.env.*` only when `process` is the global
+       */
+      'n/prefer-global/process': 'off',
+    },
+  },
+  {
     name: 'hawk-nextjs/scripts',
     files: [
       'scripts/**/*.mjs',
@@ -64,6 +99,7 @@ export default [
     name: 'hawk-nextjs/tests',
     files: [
       'tests/**/*.ts',
+      'tests/**/*.tsx',
     ],
     rules: {
       /**

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
-import { getDefaultCollectorEndpoint, getIntegrationId } from '../src/token';
+import { getDefaultCollectorEndpoint, getIntegrationId } from '../src/config/token';
 import { createToken } from './helpers';
 
 describe('getIntegrationId', () => {

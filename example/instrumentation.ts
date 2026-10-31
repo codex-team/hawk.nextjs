@@ -1,39 +1,18 @@
-import type { Instrumentation } from 'next';
+import * as Hawk from '@hawk.so/nextjs';
 
 /**
- * Initializes the Node.js catcher when the server starts.
- * The catcher is imported dynamically to keep it out of the Edge runtime bundle
+ * Catches errors in the Node.js and Edge runtimes. The token is taken from NEXT_PUBLIC_HAWK_TOKEN
  */
-export async function register(): Promise<void> {
-  const token = process.env.NEXT_PUBLIC_HAWK_TOKEN;
-
-  if (process.env.NEXT_RUNTIME !== 'nodejs' || token === undefined || token === '') {
-    return;
-  }
-
-  const { default: HawkCatcher } = await import('@hawk.so/nodejs');
-
-  HawkCatcher.init({
-    token,
-    release: process.env.HAWK_RELEASE,
+export function register(): void {
+  Hawk.init({
+    /**
+     * Lets the e2e test send events to the mock collector
+     */
+    collectorEndpoint: process.env.HAWK_E2E_HTTP_ENDPOINT,
   });
 }
 
 /**
- * Next.js handles errors of server components, route handlers and server actions itself,
- * so they don't reach the global `uncaughtException` handler and are sent from here
+ * Sends errors of server components, route handlers, server actions and middleware
  */
-export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
-  if (process.env.NEXT_RUNTIME !== 'nodejs') {
-    return;
-  }
-
-  const { default: HawkCatcher } = await import('@hawk.so/nodejs');
-
-  HawkCatcher.send(error as Error, {
-    method: request.method,
-    path: request.path,
-    routePath: context.routePath,
-    routeType: context.routeType,
-  });
-};
+export const onRequestError = Hawk.onRequestError;

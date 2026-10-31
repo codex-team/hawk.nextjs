@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { deleteClientSourceMaps, stripSourceMappingUrlComments } from '../src/cleanup';
-import { listFiles } from '../src/utils/fs';
+import { deleteClientSourceMaps, stripSourceMappingUrlComments } from '../src/config/cleanup';
+import { listFiles } from '../src/config/utils/fs';
 import { createTempDir } from './helpers';
 
 describe('deleteClientSourceMaps', () => {
